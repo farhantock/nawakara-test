@@ -25,5 +25,13 @@ php artisan migrate --force
 echo "Seeding initial users and demo data..."
 php artisan db:seed --force
 
+# Ensure frontend React assets are compiled
+if [ ! -f "/var/www/public/build/manifest.json" ]; then
+  echo "Vite manifest not found. Building frontend assets..."
+  npm install --no-audit --no-fund
+  npm run build
+fi
+
 echo "Starting Laravel application server on 0.0.0.0:8000..."
-exec php artisan serve --host=0.0.0.0 --port=8000
+export PHP_CLI_SERVER_WORKERS=4
+exec php artisan serve --host=0.0.0.0 --port=8000 --no-reload
