@@ -70,7 +70,6 @@ stateDiagram-v2
 
 ## 3. Database Schema & Migration
 
-Database PostgreSQL dirancang dengan integritas data ketat:
 
 ### Skema Tabel Utama
 
@@ -157,53 +156,8 @@ Setelah kontainer siap:
 
 ---
 
-### Opsi B: Menjalankan Secara Lokal (Host)
-**Persyaratan Sistem:**
-- PHP 8.4 (ekstensi: `pdo_pgsql`, `pgsql`, `mbstring`, `intl`)
-- PostgreSQL 16 (Port 5432)
-- Composer 2
-- Node.js 20+ & npm
-
-**Langkah Instalasi:**
-```bash
-# 1. Install dependensi
-composer install
-npm install
-
-# 2. Setup konfigurasi environment
-cp .env.example .env
-php artisan key:generate
-
-# 3. Sesuaikan koneksi database di .env jika perlu:
-# DB_CONNECTION=pgsql
-# DB_HOST=127.0.0.1
-# DB_PORT=5432
-# DB_DATABASE=purchase_request
-# DB_USERNAME=postgres
-# DB_PASSWORD=postgres
-
-# 4. Jalankan migrasi dan seeder
-php artisan migrate:fresh --seed
-
-# 5. Build asset frontend (React Vite)
-npm run build
-
-# 6. Jalankan server lokal
-php artisan serve --port=8000
-```
-
----
-
-## 5. Akun Pengujian (Seed Data)
-
-Database seeder secara otomatis menyiapkan akun pengujian berikut (password default untuk semua akun: `password123`):
-
-| Nama Pengguna | Alamat Email | Peran | Kegunaan Pengujian |
-| :--- | :--- | :--- | :--- |
-| **Rina Wijaya** | `rina.wijaya@example.test` | `EMPLOYEE` | Pemohon PR (Dapat membuat draft, submit request) |
-| **Andi Saputra** | `andi.saputra@example.test` | `EMPLOYEE` | Karyawan lain (Uji isolasi data & otorisasi E2) |
-| **Budi Hartono** | `budi.hartono@example.test` | `MANAGER` | Manajer (Uji persetujuan / penolakan) |
-| **Sari Lestari** | `sari.lestari@example.test` | `MANAGER` | Manajer kedua (Uji *concurrency* / *race condition* E5) |
+## 5. Akun Pengujian
+Untuk pengujian lokal mandiri di lingkungan dev/docker, akun awal dibuat secara otomatis saat menjalankan seeder bawaan (`php artisan migrate:fresh --seed`).*
 
 ---
 
@@ -281,21 +235,3 @@ docker compose exec api php artisan test
 # Menjalankan secara lokal:
 php artisan test --env=local
 ```
-
-### Ringkasan Test Cases
-| Kategori | Nama Test Case | Deskripsi & Verifikasi |
-| :--- | :--- | :--- |
-| **Integrity (E1)** | `test_e1_submit_request_without_items_returns_422` | Request tanpa item ditolak 422 saat submit; status tetap DRAFT. |
-| **Security (E2)** | `test_e2_unauthorized_user_or_self_approving_returns_403_and_status_unchanged` | Pemohon yang berperan manajer ditolak 403 jika menyetujui pengajuannya sendiri. |
-| **Integrity (E3)** | `test_e3_double_decision_on_final_status_returns_409` | PR dengan status final (Approved/Rejected) tidak dapat diapprove/direject ulang. |
-| **Security (E4)** | `test_e4_server_recalculates_totals_and_ignores_client_tampering` | Total yang dimanipulasi klien diabaikan; server menghitung ulang nilai asli. |
-| **Concurrency (E5)** | `test_e5_concurrent_manager_approvals_only_one_wins_other_gets_409` | Dua manajer menyetujui bersamaan: tepat satu sukses (200), lainnya mendapat 409 (*lockForUpdate*). |
-| **Atomicity (E6)** | `test_e6_atomic_transaction_rollback_when_history_insert_fails` | Transaksi di-rollback total jika penulisan audit history gagal. |
-| **Workflow (F6)** | `test_f6_reject_without_comment_returns_422` | Penolakan tanpa alasan/komentar wajib menghasilkan 422 Unprocessable Entity. |
-| **Workflow (F3)** | `test_f3_edit_after_submitted_returns_409` | Pengeditan draft yang sudah diajukan (Submitted) ditolak dengan 409 Invalid State. |
-| **Scoping (F2)** | `test_f2_list_scoping_by_role` | Karyawan hanya melihat request miliknya; manajer melihat request non-draft seluruh tim. |
-| **Audit Trail (F7)** | `test_f7_every_successful_action_adds_history_with_correct_from_and_to_status` | Setiap mutasi mencatat riwayat dengan action, from_status, to_status, dan aktor yang valid. |
-| **Database Trigger** | `test_append_only_direct_update_or_delete_on_approval_history_is_rejected_by_database` | Verifikasi database trigger menolak modifikasi langsung pada tabel history. |
-| **Audit Security** | `test_rejected_attempts_403_and_409_are_written_to_audit_log_channel` | Upaya terlarang dicatat ke channel log audit keamanan khusus. |
-| **Auth** | `test_user_can_login_with_valid_credentials` | Login berhasil menerbitkan Bearer Token Sanctum. |
-| **Auth** | `test_login_fails_with_invalid_credentials` | Login gagal melempar 422 / kredensial salah. |
