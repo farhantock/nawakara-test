@@ -1,0 +1,35 @@
+FROM php:8.4-cli-alpine
+
+# Install system dependencies, PostgreSQL client & libraries
+RUN apk add --no-cache \
+    postgresql-client \
+    postgresql-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    git \
+    netcat-openbsd
+
+# Install required PHP extensions
+RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath zip
+
+# Copy Composer binary from official composer image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www
+
+# Copy application files
+COPY . /var/www
+
+# Install Composer dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Ensure proper line endings and permissions on entrypoint script
+RUN sed -i 's/\r$//' /var/www/docker/entrypoint.sh \
+    && chmod +x /var/www/docker/entrypoint.sh
+
+# Expose Laravel serve port
+EXPOSE 8000
+
+ENTRYPOINT ["/var/www/docker/entrypoint.sh"]
